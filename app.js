@@ -119,6 +119,19 @@ function uid() {
   return 'b' + Math.random().toString(36).slice(2, 9);
 }
 
+/** Allow only http/https/relative URLs; block javascript: and data: URLs */
+function sanitizeUrl(url) {
+  if (!url) return '#';
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed, window.location.href);
+    if (parsed.protocol === 'javascript:' || parsed.protocol === 'data:') return '#';
+  } catch (_) {
+    // relative URL – allow as-is
+  }
+  return trimmed;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let selectedBlock = null;
 let dragSrcType   = null; // type from sidebar
@@ -164,7 +177,6 @@ canvas.addEventListener('dragover', e => {
   const afterEl = getDragAfterElement(canvas, e.clientY);
   const placeholder = document.querySelector('.drop-placeholder') || (() => {
     const p = div('drop-placeholder');
-    p.style.cssText = 'height:4px;background:var(--accent);border-radius:2px;margin:4px 0;pointer-events:none;';
     return p;
   })();
 
@@ -401,7 +413,7 @@ function renderProps(wrapper) {
 
 function addPropsNote(msg) {
   const p = document.createElement('p');
-  p.style.cssText = 'font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.5';
+  p.className = 'prop-note';
   p.textContent = msg;
   propsContent.appendChild(p);
 }
@@ -476,7 +488,9 @@ function addHeadingLevelProp(wrapper) {
 
   sel.addEventListener('change', () => {
     const cur = inner.querySelector('h1,h2,h3');
-    const newH = document.createElement(sel.value);
+    const allowed = ['h1', 'h2', 'h3'];
+    const tag = allowed.includes(sel.value) ? sel.value : 'h2';
+    const newH = document.createElement(tag);
     newH.contentEditable = 'true';
     newH.spellcheck = false;
     newH.textContent = cur?.textContent || 'Section Title';
@@ -522,7 +536,7 @@ function addButtonUrlProp(wrapper) {
   const btn = wrapper.querySelector('.cb-button a');
   inp.value = btn?.getAttribute('href') || '#';
   inp.addEventListener('input', () => {
-    if (btn) btn.setAttribute('href', inp.value);
+    if (btn) btn.setAttribute('href', sanitizeUrl(inp.value));
   });
   g.appendChild(inp);
 }
@@ -563,12 +577,10 @@ function setImage(wrapper, url) {
   let img = container.querySelector('img');
   if (!img) {
     img = document.createElement('img');
-    img.style.maxWidth = '100%';
-    img.style.borderRadius = 'var(--radius)';
     if (ph) ph.replaceWith(img);
     else container.appendChild(img);
   }
-  img.src = url;
+  img.src = sanitizeUrl(url);
   img.alt = '';
   // Update props panel if open
   const urlInp = propsContent.querySelector('input[placeholder="https://..."]');

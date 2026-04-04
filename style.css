@@ -517,3 +517,23 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* Firefox scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* ── Drag placeholder ────────────────────────────────── */
+.drop-placeholder {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin: 4px 0;
+  pointer-events: none;
+}
+
+/* ── Props note ──────────────────────────────────────── */
+.prop-note {
+  font-size: .78rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
