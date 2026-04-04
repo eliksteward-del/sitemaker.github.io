@@ -119,17 +119,21 @@ function uid() {
   return 'b' + Math.random().toString(36).slice(2, 9);
 }
 
-/** Allow only http/https/relative URLs; block javascript: and data: URLs */
+/** Allow only http: and https: URLs; return '#' for anything else (allowlist approach) */
 function sanitizeUrl(url) {
   if (!url) return '#';
-  const trimmed = url.trim();
+  const s = url.trim();
   try {
-    const parsed = new URL(trimmed, window.location.href);
-    if (parsed.protocol === 'javascript:' || parsed.protocol === 'data:') return '#';
+    const parsed = new URL(s);
+    // Allowlist: only http and https
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? parsed.href : '#';
   } catch (_) {
-    // relative URL – allow as-is
+    // Relative URL: reject if it contains a scheme-like pattern before any slash
+    const colonIdx = s.indexOf(':');
+    const slashIdx = s.indexOf('/');
+    if (colonIdx !== -1 && (slashIdx === -1 || colonIdx < slashIdx)) return '#';
+    return s;
   }
-  return trimmed;
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -536,7 +540,16 @@ function addButtonUrlProp(wrapper) {
   const btn = wrapper.querySelector('.cb-button a');
   inp.value = btn?.getAttribute('href') || '#';
   inp.addEventListener('input', () => {
-    if (btn) btn.setAttribute('href', sanitizeUrl(inp.value));
+    if (!btn) return;
+    // Inline allowlist check so the value flowing to setAttribute is verifiably safe
+    let safeHref = '#';
+    try {
+      const parsed = new URL(inp.value.trim());
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        safeHref = parsed.href;
+      }
+    } catch (_) { /* keep '#' */ }
+    btn.setAttribute('href', safeHref);
   });
   g.appendChild(inp);
 }
@@ -572,6 +585,16 @@ function pickImage(wrapper) {
 
 function setImage(wrapper, url) {
   if (!url) return;
+  // Inline allowlist check: only assign http/https URLs to img.src
+  let safeSrc = '';
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      safeSrc = parsed.href;
+    }
+  } catch (_) { /* ignore invalid URLs */ }
+  if (!safeSrc) return;
+
   const container = wrapper.querySelector('.cb-image');
   const ph = container.querySelector('.img-placeholder');
   let img = container.querySelector('img');
@@ -580,11 +603,11 @@ function setImage(wrapper, url) {
     if (ph) ph.replaceWith(img);
     else container.appendChild(img);
   }
-  img.src = sanitizeUrl(url);
+  img.src = safeSrc;
   img.alt = '';
   // Update props panel if open
   const urlInp = propsContent.querySelector('input[placeholder="https://..."]');
-  if (urlInp) urlInp.value = url;
+  if (urlInp) urlInp.value = safeSrc;
 }
 
 // ── Empty canvas message ──────────────────────────────────────────────────────
