@@ -541,7 +541,8 @@ function addButtonUrlProp(wrapper) {
   inp.value = btn?.getAttribute('href') || '#';
   inp.addEventListener('input', () => {
     if (!btn) return;
-    // Inline allowlist check so the value flowing to setAttribute is verifiably safe
+    // NOTE: allowlist check is kept inline (not delegated to sanitizeUrl) so that
+    // static-analysis tools can verify the taint is fully eliminated at this sink.
     let safeHref = '#';
     try {
       const parsed = new URL(inp.value.trim());
@@ -585,7 +586,8 @@ function pickImage(wrapper) {
 
 function setImage(wrapper, url) {
   if (!url) return;
-  // Inline allowlist check: only assign http/https URLs to img.src
+  // NOTE: allowlist check is kept inline (not delegated to sanitizeUrl) so that
+  // static-analysis tools can verify the taint is fully eliminated at this sink.
   let safeSrc = '';
   try {
     const parsed = new URL(url.trim());
