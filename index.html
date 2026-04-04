@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiteMaker – Build Your Own Website</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Top bar ────────────────────────────────────────────────────── -->
+<header id="topbar">
+  <span class="logo">✦ SiteMaker</span>
+  <input id="page-title-input" type="text" value="My Awesome Site" placeholder="Page title…">
+  <div class="spacer"></div>
+  <button id="btn-templates" class="btn btn-secondary">📋 Templates</button>
+  <button id="btn-preview"   class="btn btn-secondary">👁 Preview</button>
+  <button id="btn-export"    class="btn btn-primary">⬇ Export HTML</button>
+</header>
+
+<!-- ── Main workspace ─────────────────────────────────────────────── -->
+<div id="workspace">
+
+  <!-- Left sidebar: block palette -->
+  <nav id="sidebar">
+    <h3>Blocks</h3>
+    <div id="sidebar-blocks"></div>
+  </nav>
+
+  <!-- Canvas -->
+  <main id="canvas-wrapper">
+    <div id="canvas">
+      <div id="canvas-empty-msg">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <line x1="12" y1="8" x2="12" y2="16"/>
+          <line x1="8"  y1="12" x2="16" y2="12"/>
+        </svg>
+        <p><strong>Drag blocks here</strong> or click one on the left</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right properties panel -->
+  <aside id="props-panel">
+    <div id="props-empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5" opacity=".3">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93A10 10 0 1 0 4.93 19.07"/>
+      </svg>
+      <span>Select a block<br>to edit its properties</span>
+    </div>
+    <div id="props-content" style="display:none"></div>
+  </aside>
+
+</div>
+
+<!-- ── Preview overlay ────────────────────────────────────────────── -->
+<div id="preview-overlay">
+  <div id="preview-frame-wrapper">
+    <div id="preview-header">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="preview-url">Preview — your site</span>
+      <button id="btn-preview-close">✕ Close</button>
+    </div>
+    <iframe id="preview-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
+  </div>
+</div>
+
+<!-- ── Templates overlay ──────────────────────────────────────────── -->
+<div id="templates-overlay">
+  <div id="templates-modal">
+    <button class="close-btn" id="btn-templates-close">✕</button>
+    <h2>Choose a Template</h2>
+    <p class="subtitle">Pick a starting point, then customize everything.</p>
+    <div class="template-grid" id="templates-grid"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
