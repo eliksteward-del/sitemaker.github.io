@@ -1022,7 +1022,6 @@ function setPublishMessage(message, tone = '') {
 
 async function generatePublishUrl() {
   const slug = slugifySiteName(publishSlugInput.value || pageTitleInput.value);
-  const safeSlug = slug.replace(/[^a-z0-9-]/g, '');
   publishSlugInput.value = slug;
   if (!isValidSiteSlug(slug)) {
     publishUrlOutput.value = '';
@@ -1039,7 +1038,7 @@ async function generatePublishUrl() {
   url.searchParams.set('site', slug);
   url.searchParams.set('data', payload);
   publishUrlOutput.value = url.toString();
-  setPublishMessage(`Your site is ready. Share this free SiteMaker link for "${safeSlug}".`, 'success');
+  setPublishMessage(`Your site is ready. Share this free SiteMaker link for "${slug}".`, 'success');
   return publishUrlOutput.value;
 }
 
@@ -1202,8 +1201,12 @@ function initEditor() {
   document.getElementById('btn-preview-close').addEventListener('click', closePreview);
   document.getElementById('btn-templates-close').addEventListener('click', closeTemplates);
   document.getElementById('btn-publish-close').addEventListener('click', closePublish);
-  document.getElementById('btn-copy-publish').addEventListener('click', () => { void copyPublishLink(); });
-  document.getElementById('btn-open-publish').addEventListener('click', () => { void openPublishedSite(); });
+  document.getElementById('btn-copy-publish').addEventListener('click', () => {
+    copyPublishLink().catch(() => setPublishMessage('We could not copy the published link.', 'error'));
+  });
+  document.getElementById('btn-open-publish').addEventListener('click', () => {
+    openPublishedSite().catch(() => setPublishMessage('We could not open the published site.', 'error'));
+  });
   publishSlugInput.addEventListener('input', refreshPublishUrl);
   previewOverlay.addEventListener('click', e => { if (e.target === previewOverlay) closePreview(); });
   templatesOverlay.addEventListener('click', e => { if (e.target === templatesOverlay) closeTemplates(); });
