@@ -1040,12 +1040,19 @@ async function generatePublishUrl() {
   return publishUrlOutput.value;
 }
 
+function refreshPublishUrl() {
+  generatePublishUrl().catch(() => {
+    publishUrlOutput.value = '';
+    setPublishMessage('We could not generate a published link right now.', 'error');
+  });
+}
+
 function openPublish() {
   publishSlugInput.value = slugifySiteName(pageTitleInput.value);
   publishUrlOutput.value = '';
   setPublishMessage('Create a free published link for your site.');
   publishOverlay.classList.add('open');
-  void generatePublishUrl();
+  refreshPublishUrl();
 }
 
 function closePublish() {
@@ -1072,22 +1079,30 @@ async function openPublishedSite() {
 }
 
 async function renderPublishedSite() {
+  let errorMessage = 'The publish data is missing or invalid. Create a new published link from the editor.';
   try {
     const params = new URLSearchParams(window.location.search);
     const payload = params.get('data');
     if (!payload) return false;
-    const siteState = normalizeSiteState(JSON.parse(await decompressText(payload)));
+    let parsedState;
+    try {
+      parsedState = JSON.parse(await decompressText(payload));
+    } catch (_) {
+      throw new Error('The published link contains corrupted data.');
+    }
+    const siteState = normalizeSiteState(parsedState);
     const html = buildSiteHTMLFromState(siteState, false);
     document.open();
     document.write(html);
     document.close();
     return true;
-  } catch (_) {
+  } catch (error) {
+    errorMessage = error?.message || errorMessage;
     document.body.innerHTML = `
       <main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f0f2f7;font-family:'Segoe UI',system-ui,sans-serif;">
         <div style="max-width:520px;background:#fff;padding:24px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.12);text-align:center;">
           <h1 style="margin-bottom:12px;">This published link could not be opened</h1>
-          <p style="margin-bottom:16px;color:#6b7280;">The publish data is missing or invalid. Create a new published link from the editor.</p>
+          <p style="margin-bottom:16px;color:#6b7280;">${escapeHTML(errorMessage)}</p>
           <a href="${escapeHTML(`${window.location.origin}${window.location.pathname}`)}" style="display:inline-block;padding:10px 18px;background:#4f6ef7;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Back to SiteMaker</a>
         </div>
       </main>`;
@@ -1182,7 +1197,7 @@ function initEditor() {
   document.getElementById('btn-publish-close').addEventListener('click', closePublish);
   document.getElementById('btn-copy-publish').addEventListener('click', () => { void copyPublishLink(); });
   document.getElementById('btn-open-publish').addEventListener('click', () => { void openPublishedSite(); });
-  publishSlugInput.addEventListener('input', () => { void generatePublishUrl(); });
+  publishSlugInput.addEventListener('input', refreshPublishUrl);
   previewOverlay.addEventListener('click', e => { if (e.target === previewOverlay) closePreview(); });
   templatesOverlay.addEventListener('click', e => { if (e.target === templatesOverlay) closeTemplates(); });
   publishOverlay.addEventListener('click', e => { if (e.target === publishOverlay) closePublish(); });
