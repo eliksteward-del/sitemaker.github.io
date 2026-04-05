@@ -1,2 +1,10 @@
 # sitemaker.github.io
-sitemaker is a site that will let you make a site
+
+SiteMaker is a simple drag-and-drop site builder.
+
+## Features
+
+- Build pages with reusable content blocks
+- Preview your site before exporting
+- Export a standalone HTML file
+- Publish a free shareable SiteMaker link with a custom site name

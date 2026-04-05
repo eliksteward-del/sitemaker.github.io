@@ -136,6 +136,65 @@ function sanitizeUrl(url) {
   }
 }
 
+const HERO_BACKGROUNDS = [
+  'linear-gradient(135deg,#ede9fe,#dbeafe)',
+  'linear-gradient(135deg,#d1fae5,#a7f3d0)',
+  'linear-gradient(135deg,#fef9c3,#fde68a)',
+  'linear-gradient(135deg,#fee2e2,#fecaca)',
+  'linear-gradient(135deg,#f0f9ff,#e0f2fe)',
+  '#ffffff',
+  '#111827',
+];
+
+const TEXT_ALIGNMENTS = ['left', 'center', 'right'];
+const HEADING_LEVELS = ['h1', 'h2', 'h3'];
+const FONT_SIZES = ['.85rem', '1rem', '1.15rem', '1.35rem'];
+
+function sanitizeColor(value, fallback = '') {
+  return /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(value || '') ? value : fallback;
+}
+
+function sanitizeAlignment(value) {
+  return TEXT_ALIGNMENTS.includes(value) ? value : '';
+}
+
+function sanitizeHeroBackground(value) {
+  return HERO_BACKGROUNDS.includes(value) ? value : HERO_BACKGROUNDS[0];
+}
+
+function sanitizeHeadingLevelValue(value) {
+  return HEADING_LEVELS.includes(value) ? value : 'h2';
+}
+
+function sanitizeFontSizeValue(value) {
+  return FONT_SIZES.includes(value) ? value : '1rem';
+}
+
+function buildStyleAttr(styles) {
+  const safeStyle = Object.entries(styles)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}:${value}`)
+    .join(';');
+  return safeStyle ? ` style="${escapeHTML(safeStyle)}"` : '';
+}
+
+function safeText(value, fallback = '') {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function slugifySiteName(value) {
+  const slug = safeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  return slug || 'my-site';
+}
+
+function isValidSiteSlug(value) {
+  return /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/.test(value);
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let selectedBlock = null;
 let dragSrcType   = null; // type from sidebar
@@ -150,7 +209,11 @@ const propsContent    = document.getElementById('props-content');
 const previewOverlay  = document.getElementById('preview-overlay');
 const previewIframe   = document.getElementById('preview-iframe');
 const templatesOverlay = document.getElementById('templates-overlay');
+const publishOverlay  = document.getElementById('publish-overlay');
 const pageTitleInput  = document.getElementById('page-title-input');
+const publishSlugInput = document.getElementById('publish-slug-input');
+const publishUrlOutput = document.getElementById('publish-url-output');
+const publishStatus   = document.getElementById('publish-status');
 
 // ── Sidebar block items ────────────────────────────────────────────────────────
 function buildSidebar() {
@@ -640,29 +703,197 @@ function exportSite() {
   URL.revokeObjectURL(a.href);
 }
 
-function buildExportHTML(forPreview) {
-  const title = pageTitleInput.value.trim() || 'My Site';
-  const bodyParts = [];
+function collectSiteState() {
+  return {
+    title: pageTitleInput.value.trim() || 'My Site',
+    blocks: [...canvas.querySelectorAll('.canvas-block')].map(serializeBlock).filter(Boolean),
+  };
+}
 
-  // Collect blocks
-  canvas.querySelectorAll('.canvas-block').forEach(wrapper => {
-    const inner = wrapper.querySelector('[class^="cb-"]');
-    if (!inner) return;
-    // Clone and strip editor chrome
-    const clone = inner.cloneNode(true);
-    clone.querySelectorAll('[contenteditable]').forEach(el => {
-      el.removeAttribute('contenteditable');
-      el.removeAttribute('spellcheck');
-    });
-    // Fix links
-    clone.querySelectorAll('a').forEach(a => {
-      if (!a.getAttribute('href') || a.getAttribute('href') === '#') {
-        a.setAttribute('href', '#');
-        a.style.pointerEvents = forPreview ? 'none' : '';
-      }
-    });
-    bodyParts.push(clone.outerHTML);
-  });
+function serializeBlock(wrapper) {
+  const type = wrapper.dataset.type;
+
+  if (type === 'hero') {
+    const inner = wrapper.querySelector('.cb-hero');
+    const button = inner?.querySelector('a');
+    return {
+      type,
+      heading: inner?.querySelector('h1')?.textContent || 'Welcome to My Site',
+      text: inner?.querySelector('p')?.textContent || 'A beautiful, fast website. Start editing to make it yours.',
+      buttonText: button?.textContent || 'Get Started',
+      buttonUrl: sanitizeUrl(button?.getAttribute('href') || '#'),
+      background: sanitizeHeroBackground(inner?.style.background || ''),
+      align: sanitizeAlignment(inner?.style.textAlign || ''),
+    };
+  }
+
+  if (type === 'navbar') {
+    return {
+      type,
+      brand: wrapper.querySelector('.nav-brand')?.textContent || 'MySite',
+      links: [...wrapper.querySelectorAll('.nav-links span')].map(link => link.textContent || 'Link').slice(0, 6),
+    };
+  }
+
+  if (type === 'heading') {
+    const heading = wrapper.querySelector('.cb-heading h1, .cb-heading h2, .cb-heading h3');
+    const inner = wrapper.querySelector('.cb-heading');
+    return {
+      type,
+      level: sanitizeHeadingLevelValue(heading?.tagName.toLowerCase() || 'h2'),
+      text: heading?.textContent || 'Section Title',
+      align: sanitizeAlignment(inner?.style.textAlign || ''),
+      color: sanitizeColor(wrapper._color || ''),
+    };
+  }
+
+  if (type === 'text') {
+    const paragraph = wrapper.querySelector('.cb-text p');
+    const inner = wrapper.querySelector('.cb-text');
+    return {
+      type,
+      text: paragraph?.textContent || 'Click here to edit your text. Add your own content, tell your story, and engage your visitors.',
+      align: sanitizeAlignment(inner?.style.textAlign || ''),
+      color: sanitizeColor(wrapper._color || ''),
+      fontSize: sanitizeFontSizeValue(paragraph?.style.fontSize || '1rem'),
+    };
+  }
+
+  if (type === 'button') {
+    const button = wrapper.querySelector('.cb-button a');
+    const inner = wrapper.querySelector('.cb-button');
+    return {
+      type,
+      text: button?.textContent || 'Click Me',
+      url: sanitizeUrl(button?.getAttribute('href') || '#'),
+      align: sanitizeAlignment(inner?.style.textAlign || ''),
+      color: sanitizeColor(wrapper._btnColor || '#4f6ef7', '#4f6ef7'),
+    };
+  }
+
+  if (type === 'image') {
+    const img = wrapper.querySelector('.cb-image img');
+    return {
+      type,
+      src: img?.getAttribute('src') || '',
+      alt: img?.getAttribute('alt') || '',
+    };
+  }
+
+  if (type === 'columns') {
+    const cols = wrapper.querySelectorAll('.cb-columns .col');
+    return {
+      type,
+      columns: [...cols].slice(0, 2).map((col, index) => ({
+        heading: col.querySelector('h4')?.textContent || `Column ${index + 1}`,
+        text: col.querySelector('p')?.textContent || 'Edit this column text to describe your content.',
+      })),
+    };
+  }
+
+  if (type === 'divider') return { type };
+  return null;
+}
+
+function normalizeSiteState(siteState) {
+  const rawBlocks = Array.isArray(siteState?.blocks) ? siteState.blocks : [];
+  return {
+    title: safeText(siteState?.title, 'My Site').slice(0, 120) || 'My Site',
+    blocks: rawBlocks.filter(block => block && typeof block === 'object').slice(0, 50),
+  };
+}
+
+function buildLinkAttrs(url, forPreview, extraStyles = {}) {
+  const safeHref = sanitizeUrl(url || '#');
+  if (safeHref === '#') {
+    return `href="#"${buildStyleAttr({
+      ...(forPreview ? { 'pointer-events': 'none' } : {}),
+      ...extraStyles,
+    })}`;
+  }
+  return `href="${escapeHTML(safeHref)}"${buildStyleAttr(extraStyles)}`;
+}
+
+function buildBlockHTML(block, forPreview) {
+  if (!block || typeof block !== 'object') return '';
+
+  if (block.type === 'hero') {
+    return `<section class="cb-hero"${buildStyleAttr({
+      background: sanitizeHeroBackground(block.background),
+      'text-align': sanitizeAlignment(block.align),
+    })}>
+      <h1>${escapeHTML(safeText(block.heading, 'Welcome to My Site'))}</h1>
+      <p>${escapeHTML(safeText(block.text, 'A beautiful, fast website. Start editing to make it yours.'))}</p>
+      <a ${buildLinkAttrs(block.buttonUrl, forPreview)}>${escapeHTML(safeText(block.buttonText, 'Get Started'))}</a>
+    </section>`;
+  }
+
+  if (block.type === 'navbar') {
+    const links = (Array.isArray(block.links) ? block.links : ['Home', 'About', 'Contact'])
+      .map(link => `<span>${escapeHTML(safeText(link, 'Link'))}</span>`)
+      .join('');
+    return `<nav class="cb-navbar">
+      <span class="nav-brand">${escapeHTML(safeText(block.brand, 'MySite'))}</span>
+      <div class="nav-links">${links}</div>
+    </nav>`;
+  }
+
+  if (block.type === 'heading') {
+    const level = sanitizeHeadingLevelValue(block.level);
+    return `<section class="cb-heading"${buildStyleAttr({ 'text-align': sanitizeAlignment(block.align) })}>
+      <${level}${buildStyleAttr({ color: sanitizeColor(block.color || '') })}>${escapeHTML(safeText(block.text, 'Section Title'))}</${level}>
+    </section>`;
+  }
+
+  if (block.type === 'text') {
+    return `<section class="cb-text"${buildStyleAttr({ 'text-align': sanitizeAlignment(block.align) })}>
+      <p${buildStyleAttr({
+        color: sanitizeColor(block.color || ''),
+        'font-size': sanitizeFontSizeValue(block.fontSize || '1rem'),
+      })}>${escapeHTML(safeText(block.text, 'Click here to edit your text.'))}</p>
+    </section>`;
+  }
+
+  if (block.type === 'button') {
+    return `<section class="cb-button"${buildStyleAttr({ 'text-align': sanitizeAlignment(block.align) })}>
+      <a ${buildLinkAttrs(block.url, forPreview, { background: sanitizeColor(block.color || '#4f6ef7', '#4f6ef7') })}>${escapeHTML(safeText(block.text, 'Click Me'))}</a>
+    </section>`;
+  }
+
+  if (block.type === 'image') {
+    const safeSrc = sanitizeUrl(block.src || '');
+    if (!block.src || safeSrc === '#') {
+      return `<section class="cb-image">
+        <div class="img-placeholder"><span>🖼</span> Add an image</div>
+      </section>`;
+    }
+    return `<section class="cb-image">
+      <img src="${escapeHTML(safeSrc)}" alt="${escapeHTML(safeText(block.alt, ''))}">
+    </section>`;
+  }
+
+  if (block.type === 'columns') {
+    const columns = (Array.isArray(block.columns) ? block.columns : []).slice(0, 2);
+    while (columns.length < 2) columns.push({ heading: `Column ${columns.length + 1}`, text: 'Edit this column text to describe your content.' });
+    return `<section class="cb-columns">
+      ${columns.map(col => `<div class="col">
+        <h4>${escapeHTML(safeText(col.heading, 'Column'))}</h4>
+        <p>${escapeHTML(safeText(col.text, 'Edit this column text to describe your content.'))}</p>
+      </div>`).join('')}
+    </section>`;
+  }
+
+  if (block.type === 'divider') {
+    return `<section class="cb-divider"><hr></section>`;
+  }
+
+  return '';
+}
+
+function buildSiteHTMLFromState(siteState, forPreview) {
+  const state = normalizeSiteState(siteState);
+  const bodyParts = state.blocks.map(block => buildBlockHTML(block, forPreview)).filter(Boolean);
+  const title = state.title || 'My Site';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -695,6 +926,18 @@ function buildExportHTML(forPreview) {
     .cb-button a { display: inline-block; padding: 11px 28px; background: #4f6ef7; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; }
     .cb-image { padding: 16px 32px; text-align: center; }
     .cb-image img { max-width: 100%; border-radius: 6px; }
+    .cb-image .img-placeholder {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: min(100%, 720px);
+      min-height: 160px;
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      color: #6b7280;
+      background: #f0f2f7;
+    }
     .cb-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 16px 32px; }
     .cb-columns .col { padding: 20px; background: #f9fafb; border-radius: 8px; }
     .cb-columns .col h4 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
@@ -711,6 +954,145 @@ function buildExportHTML(forPreview) {
 ${bodyParts.join('\n')}
 </body>
 </html>`;
+}
+
+function buildExportHTML(forPreview) {
+  return buildSiteHTMLFromState(collectSiteState(), forPreview);
+}
+
+async function compressText(text) {
+  if (typeof CompressionStream !== 'function') {
+    return `plain.${btoa(unescape(encodeURIComponent(text))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')}`;
+  }
+
+  const stream = new CompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  writer.write(new TextEncoder().encode(text));
+  writer.close();
+  const buffer = await new Response(stream.readable).arrayBuffer();
+  return `gz.${bytesToBase64Url(new Uint8Array(buffer))}`;
+}
+
+async function decompressText(payload) {
+  const [format, data = ''] = safeText(payload).split('.', 2);
+  if (!data) throw new Error('Missing publish data.');
+
+  if (format === 'plain') {
+    return decodeURIComponent(escape(atob(base64UrlToBase64(data))));
+  }
+
+  if (format === 'gz') {
+    if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot open published links.');
+    const bytes = base64UrlToBytes(data);
+    const stream = new DecompressionStream('gzip');
+    const writer = stream.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    return await new Response(stream.readable).text();
+  }
+
+  throw new Error('Unsupported publish data format.');
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBase64(value) {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/');
+  return padded + '='.repeat((4 - (padded.length % 4 || 4)) % 4);
+}
+
+function base64UrlToBytes(value) {
+  const binary = atob(base64UrlToBase64(value));
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+function setPublishMessage(message, tone = '') {
+  publishStatus.textContent = message;
+  publishStatus.className = `publish-status${tone ? ` ${tone}` : ''}`;
+}
+
+async function generatePublishUrl() {
+  const slug = slugifySiteName(publishSlugInput.value || pageTitleInput.value);
+  publishSlugInput.value = slug;
+  if (!isValidSiteSlug(slug)) {
+    publishUrlOutput.value = '';
+    setPublishMessage('Pick a site name with 3–32 letters, numbers, or hyphens.', 'error');
+    return '';
+  }
+
+  setPublishMessage('Generating your free published link...');
+  const payload = await compressText(JSON.stringify(collectSiteState()));
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('published', '1');
+  url.searchParams.set('site', slug);
+  url.searchParams.set('data', payload);
+  publishUrlOutput.value = url.toString();
+  setPublishMessage(`Your site is ready. Share this free SiteMaker link for "${slug}".`, 'success');
+  return publishUrlOutput.value;
+}
+
+function openPublish() {
+  publishSlugInput.value = slugifySiteName(pageTitleInput.value);
+  publishUrlOutput.value = '';
+  setPublishMessage('Create a free published link for your site.');
+  publishOverlay.classList.add('open');
+  void generatePublishUrl();
+}
+
+function closePublish() {
+  publishOverlay.classList.remove('open');
+}
+
+async function copyPublishLink() {
+  const url = publishUrlOutput.value || await generatePublishUrl();
+  if (!url) return;
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+  } else {
+    publishUrlOutput.focus();
+    publishUrlOutput.select();
+    document.execCommand('copy');
+  }
+  setPublishMessage('Published link copied to your clipboard.', 'success');
+}
+
+async function openPublishedSite() {
+  const url = publishUrlOutput.value || await generatePublishUrl();
+  if (url) window.open(url, '_blank', 'noopener');
+}
+
+async function renderPublishedSite() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const payload = params.get('data');
+    if (!payload) return false;
+    const siteState = normalizeSiteState(JSON.parse(await decompressText(payload)));
+    const html = buildSiteHTMLFromState(siteState, false);
+    document.open();
+    document.write(html);
+    document.close();
+    return true;
+  } catch (_) {
+    document.body.innerHTML = `
+      <main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f0f2f7;font-family:'Segoe UI',system-ui,sans-serif;">
+        <div style="max-width:520px;background:#fff;padding:24px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.12);text-align:center;">
+          <h1 style="margin-bottom:12px;">This published link could not be opened</h1>
+          <p style="margin-bottom:16px;color:#6b7280;">The publish data is missing or invalid. Create a new published link from the editor.</p>
+          <a href="${escapeHTML(`${window.location.origin}${window.location.pathname}`)}" style="display:inline-block;padding:10px 18px;background:#4f6ef7;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Back to SiteMaker</a>
+        </div>
+      </main>`;
+    return false;
+  }
 }
 
 function escapeHTML(str) {
@@ -786,15 +1168,29 @@ function applyTemplate(tpl) {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
-buildSidebar();
-buildTemplatesModal();
-updateEmptyMsg();
+function initEditor() {
+  buildSidebar();
+  buildTemplatesModal();
+  updateEmptyMsg();
 
-// Wire up global buttons
-document.getElementById('btn-preview').addEventListener('click', openPreview);
-document.getElementById('btn-export').addEventListener('click', exportSite);
-document.getElementById('btn-templates').addEventListener('click', openTemplates);
-document.getElementById('btn-preview-close').addEventListener('click', closePreview);
-document.getElementById('btn-templates-close').addEventListener('click', closeTemplates);
-previewOverlay.addEventListener('click', e => { if (e.target === previewOverlay) closePreview(); });
-templatesOverlay.addEventListener('click', e => { if (e.target === templatesOverlay) closeTemplates(); });
+  document.getElementById('btn-preview').addEventListener('click', openPreview);
+  document.getElementById('btn-export').addEventListener('click', exportSite);
+  document.getElementById('btn-templates').addEventListener('click', openTemplates);
+  document.getElementById('btn-publish').addEventListener('click', openPublish);
+  document.getElementById('btn-preview-close').addEventListener('click', closePreview);
+  document.getElementById('btn-templates-close').addEventListener('click', closeTemplates);
+  document.getElementById('btn-publish-close').addEventListener('click', closePublish);
+  document.getElementById('btn-copy-publish').addEventListener('click', () => { void copyPublishLink(); });
+  document.getElementById('btn-open-publish').addEventListener('click', () => { void openPublishedSite(); });
+  publishSlugInput.addEventListener('input', () => { void generatePublishUrl(); });
+  previewOverlay.addEventListener('click', e => { if (e.target === previewOverlay) closePreview(); });
+  templatesOverlay.addEventListener('click', e => { if (e.target === templatesOverlay) closeTemplates(); });
+  publishOverlay.addEventListener('click', e => { if (e.target === publishOverlay) closePublish(); });
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('published') === '1' && urlParams.has('data')) {
+  void renderPublishedSite();
+} else {
+  initEditor();
+}
