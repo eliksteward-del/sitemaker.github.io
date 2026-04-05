@@ -1005,7 +1005,9 @@ function bytesToBase64Url(bytes) {
 
 function base64UrlToBase64(value) {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/');
-  return padded + '='.repeat((4 - (padded.length % 4 || 4)) % 4);
+  const remainder = padded.length % 4;
+  const paddingLength = remainder === 0 ? 0 : 4 - remainder;
+  return padded + '='.repeat(paddingLength);
 }
 
 function base64UrlToBytes(value) {
@@ -1020,6 +1022,7 @@ function setPublishMessage(message, tone = '') {
 
 async function generatePublishUrl() {
   const slug = slugifySiteName(publishSlugInput.value || pageTitleInput.value);
+  const safeSlug = slug.replace(/[^a-z0-9-]/g, '');
   publishSlugInput.value = slug;
   if (!isValidSiteSlug(slug)) {
     publishUrlOutput.value = '';
@@ -1036,7 +1039,7 @@ async function generatePublishUrl() {
   url.searchParams.set('site', slug);
   url.searchParams.set('data', payload);
   publishUrlOutput.value = url.toString();
-  setPublishMessage(`Your site is ready. Share this free SiteMaker link for "${slug}".`, 'success');
+  setPublishMessage(`Your site is ready. Share this free SiteMaker link for "${safeSlug}".`, 'success');
   return publishUrlOutput.value;
 }
 
@@ -1083,12 +1086,12 @@ async function renderPublishedSite() {
   try {
     const params = new URLSearchParams(window.location.search);
     const payload = params.get('data');
-    if (!payload) return false;
+    if (!payload) throw new Error('missing-publish-data');
     let parsedState;
     try {
       parsedState = JSON.parse(await decompressText(payload));
     } catch (_) {
-      throw new Error('The published link contains corrupted data.');
+      throw new Error('corrupted-publish-data');
     }
     const siteState = normalizeSiteState(parsedState);
     const html = buildSiteHTMLFromState(siteState, false);
@@ -1097,7 +1100,11 @@ async function renderPublishedSite() {
     document.close();
     return true;
   } catch (error) {
-    errorMessage = error?.message || errorMessage;
+    if (error?.message === 'corrupted-publish-data') {
+      errorMessage = 'The published link contains corrupted data. Generate a fresh link from the editor.';
+    } else if (error?.message === 'missing-publish-data') {
+      errorMessage = 'This published link is missing its site data. Generate a fresh link from the editor.';
+    }
     document.body.innerHTML = `
       <main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f0f2f7;font-family:'Segoe UI',system-ui,sans-serif;">
         <div style="max-width:520px;background:#fff;padding:24px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.12);text-align:center;">
