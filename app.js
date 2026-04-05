@@ -1094,9 +1094,10 @@ async function renderPublishedSite() {
     }
     const siteState = normalizeSiteState(parsedState);
     const html = buildSiteHTMLFromState(siteState, false);
-    document.open();
-    document.write(html);
-    document.close();
+    const publishedDoc = new DOMParser().parseFromString(html, 'text/html');
+    document.documentElement.lang = publishedDoc.documentElement.lang || 'en';
+    document.head.innerHTML = publishedDoc.head.innerHTML;
+    document.body.innerHTML = publishedDoc.body.innerHTML;
     return true;
   } catch (error) {
     if (error?.message === 'corrupted-publish-data') {
