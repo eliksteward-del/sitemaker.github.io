@@ -188,7 +188,7 @@ function slugifySiteName(value) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 32);
-  return slug || 'my-site';
+  return slug.length >= 3 ? slug : 'my-site';
 }
 
 function isValidSiteSlug(value) {
@@ -1089,7 +1089,8 @@ async function renderPublishedSite() {
     let parsedState;
     try {
       parsedState = JSON.parse(await decompressText(payload));
-    } catch (_) {
+    } catch (error) {
+      console.warn('Failed to decode published site data.', error);
       throw new Error('corrupted-publish-data');
     }
     const siteState = normalizeSiteState(parsedState);
