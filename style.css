@@ -462,6 +462,17 @@ body {
 }
 #templates-overlay.open { display: flex; }
 
+#publish-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 210;
+  align-items: center;
+  justify-content: center;
+}
+#publish-overlay.open { display: flex; }
+
 #templates-modal {
   background: #fff;
   border-radius: 12px;
@@ -472,8 +483,18 @@ body {
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
 }
+#publish-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 560px;
+  max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
 #templates-modal h2 { font-size: 1.2rem; margin-bottom: 4px; }
 #templates-modal .subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+#publish-modal h2 { font-size: 1.2rem; margin-bottom: 4px; }
+#publish-modal .subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
 #templates-modal .close-btn {
   float: right;
   cursor: pointer;
@@ -482,6 +503,50 @@ body {
   font-size: 1.3rem;
   color: var(--muted);
   margin-top: -2px;
+}
+#publish-modal .close-btn {
+  float: right;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-size: 1.3rem;
+  color: var(--muted);
+  margin-top: -2px;
+}
+
+.publish-field { margin-bottom: 16px; }
+.publish-field label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.publish-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .9rem;
+  outline: none;
+}
+.publish-field input:focus { border-color: var(--accent); }
+.publish-help {
+  margin-top: 6px;
+  font-size: .75rem;
+  color: var(--muted);
+}
+.publish-status {
+  min-height: 1.2em;
+  margin-bottom: 16px;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.publish-status.success { color: #15803d; }
+.publish-status.error { color: var(--danger); }
+.publish-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .template-grid {

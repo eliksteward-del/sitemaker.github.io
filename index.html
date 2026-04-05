@@ -15,6 +15,7 @@
   <div class="spacer"></div>
   <button id="btn-templates" class="btn btn-secondary">📋 Templates</button>
   <button id="btn-preview"   class="btn btn-secondary">👁 Preview</button>
+  <button id="btn-publish"   class="btn btn-secondary">🌐 Publish Free</button>
   <button id="btn-export"    class="btn btn-primary">⬇ Export HTML</button>
 </header>
 
@@ -78,6 +79,33 @@
     <h2>Choose a Template</h2>
     <p class="subtitle">Pick a starting point, then customize everything.</p>
     <div class="template-grid" id="templates-grid"></div>
+  </div>
+</div>
+
+<!-- ── Publish overlay ─────────────────────────────────────────────── -->
+<div id="publish-overlay">
+  <div id="publish-modal">
+    <button class="close-btn" id="btn-publish-close">✕</button>
+    <h2>Publish your site for free</h2>
+    <p class="subtitle">Create a shareable SiteMaker link with your own site name.</p>
+
+    <div class="publish-field">
+      <label for="publish-slug-input">Site name</label>
+      <input id="publish-slug-input" type="text" placeholder="my-awesome-site" maxlength="32">
+      <p class="publish-help">Use 3–32 lowercase letters, numbers, or hyphens.</p>
+    </div>
+
+    <div class="publish-field">
+      <label for="publish-url-output">Published link</label>
+      <input id="publish-url-output" type="text" readonly>
+    </div>
+
+    <p id="publish-status" class="publish-status"></p>
+
+    <div class="publish-actions">
+      <button id="btn-copy-publish" class="btn btn-secondary">📋 Copy Link</button>
+      <button id="btn-open-publish" class="btn btn-primary">↗ Open Site</button>
+    </div>
   </div>
 </div>
 
